@@ -1,4 +1,4 @@
-#include "tree.c"
+#include "tests.h"
 #include <CUnit/CUnit.h>
 
 void test_strArraySearch(){
