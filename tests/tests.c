@@ -1,9 +1,10 @@
-#include "tests.h"
+#include "../inc/tests.h"
 #include <CUnit/CUnit.h>
 
 void test_strArraySearch(){
-	CU_ASSERT( strArraySearch(["foo", "bar", "main"], 3, "foo") == 0 );
-	CU_ASSERT( strArraySearch(["foo", "bar", "main"], 3, "bar") == 1 );
-	CU_ASSERT( strArraySearch(["foo", "bar", "main"], 3, "main") == 2 );
-	CU_ASSERT( strArraySearch(["foo", "bar", "main"], 3, "bla") == -1 );
+	const char *arr[3] = {"foo", "bar", "main"};
+	CU_ASSERT( strArraySearch(arr, 3, "foo") == 0 );
+	CU_ASSERT( strArraySearch(arr, 3, "bar") == 1 );
+	CU_ASSERT( strArraySearch(arr, 3, "main") == 2 );
+	CU_ASSERT( strArraySearch(arr, 3, "bla") == -1 );
 }

@@ -2,20 +2,28 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#include <CUnit/CUnit.h>
+#include <CUnit/Basic.h>
 
 #include "../inc/tree.h"
 #include "../inc/shared.h"
+#include "../tests/tests.c"
 
 #define CUNIT_TEST 1
 
 FILE *dataFilePtr;
+int fd;
+char *fifoPipe;
 
 void errCatch(char* errmsg){
 	printf("Error: %s\n", errmsg);
 }
 
-int strArraySearch(char **array, int len, char *delim){
-	for(i = 0; i < len; ++i){
+int strArraySearch(char const *array[], int len, char *delim){
+	for(int i = 0; i < len; ++i){
 	    if(!strcmp(array[i], delim))
 	        return i;
 	}
@@ -23,7 +31,7 @@ int strArraySearch(char **array, int len, char *delim){
 }
 
 int constructProcessTree(int curHeight, int maxHeight, int numOfChildren){
-	pid_t  pid;
+	pid_t pid;
 	if(curHeight == maxHeight)
 		return 1;
 	if(numOfChildren == 2)
@@ -38,7 +46,6 @@ int constructProcessTree(int curHeight, int maxHeight, int numOfChildren){
 int main(int argc, char const *argv[]){
 
 	//UNIT TESTING START
-
 	//If user wants to run unit tests, change define to 1. Otherwise, change to 0.
 	//Recommend to run only once then change define to 0
 	if(CUNIT_TEST){
@@ -66,8 +73,13 @@ int main(int argc, char const *argv[]){
 		//exception of CU_initialize_registry and only to repeat the testing process
 		CU_cleanup_registry();
 	}
-
 	//UNIT TESTING END
+
+
+
+
+	fifoPipe = "/tmp/fifo";
+	mkfifo(fifoPipe, 0666);
 
 	int count;
 	int height;
@@ -75,13 +87,13 @@ int main(int argc, char const *argv[]){
 
 	if(argc == 8){
 		count = strArraySearch(argv, argc, "-h");
-		height = *argv[++count];
+		height = atoi(argv[++count]);
 
 		count = strArraySearch(argv, argc, "-d");
-		dataFilePtr = fopen(*argv[++count],"r");
+		dataFilePtr = fopen(argv[++count],"r");
 
 		count = strArraySearch(argv, argc, "-p");
-		strcpy( substr, *argv[++count] );
+		strcpy( substr, argv[++count] );
 	}
 	else if(argc == 1){
 		height = 3;
@@ -93,6 +105,6 @@ int main(int argc, char const *argv[]){
 		errCatch("Wrong number of arguments... Exiting\n");
 	}
 
-	constructProcessTree(0, height, 1);
+	//constructProcessTree(0, height, 1);
 
 }

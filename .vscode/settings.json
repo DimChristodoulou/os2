@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "tests.h": "c",
+        "tests.h\u0000ests.h": "c",
+        "tests.h\u0000tests.h": "c"
+    }
+}
