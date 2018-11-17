@@ -3,6 +3,9 @@
 
 #define SIZEofBUFF 20
 #define SSizeofBUFF 6
+#define SizeofLONG 8
+#define SizeofINT 3
+#define SizeofFLOAT 4
 
 typedef struct{
 	long  	custid;
