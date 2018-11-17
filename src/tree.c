@@ -4,17 +4,17 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include<sys/wait.h> 
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
 
 #include "../inc/tree.h"
 #include "../inc/shared.h"
-#include "../tests/tests.c"
+#include "../inc/tests.h"
 
-#define CUNIT_TEST 1
+#define CUNIT_TEST 0
 
-FILE *dataFilePtr;
 int fd;
 char *fifoPipe;
 
@@ -30,24 +30,12 @@ int strArraySearch(char const *array[], int len, char *delim){
 	return -1;
 }
 
-int constructProcessTree(int curHeight, int maxHeight, int numOfChildren){
-	pid_t pid;
-	if(curHeight == maxHeight)
-		return 1;
-	if(numOfChildren == 2)
-		return 1;
-    pid = fork();
-    if (pid == 0)
-        constructProcessTree(curHeight++,maxHeight,1);
-    else 
-        constructProcessTree(curHeight,maxHeight,2);
-}
-//Test push
 int main(int argc, char const *argv[]){
 
 	//UNIT TESTING START
 	//If user wants to run unit tests, change define to 1. Otherwise, change to 0.
 	//Recommend to run only once then change define to 0
+	//If you don't have Cunit, run make cunit
 	if(CUNIT_TEST){
 
 		//First CUnit function call; Do not call any other CUnit functions before this
@@ -75,36 +63,59 @@ int main(int argc, char const *argv[]){
 	}
 	//UNIT TESTING END
 
-
-
-
-	fifoPipe = "/tmp/fifo";
-	mkfifo(fifoPipe, 0666);
-
 	int count;
 	int height;
-	char *substr;
+	char *pattern = (char*)malloc(100*sizeof(char));
+	FILE *dataFilePtr;
+	long lSize;
+	MyRecord rec;
 
 	if(argc == 8){
 		count = strArraySearch(argv, argc, "-h");
 		height = atoi(argv[++count]);
 
 		count = strArraySearch(argv, argc, "-d");
-		dataFilePtr = fopen(argv[++count],"r");
+		dataFilePtr = fopen(argv[++count],"rb");
 
 		count = strArraySearch(argv, argc, "-p");
-		strcpy( substr, argv[++count] );
+		strcpy( pattern, argv[++count] );
 	}
 	else if(argc == 1){
 		height = 3;
 		dataFilePtr = stdin;
 		//CHANGE SUBSTR ACCORDING TO BINARY FILE
-		substr = "test";
+		pattern = "test";
 	}
 	else{
 		errCatch("Wrong number of arguments... Exiting\n");
 	}
 
-	//constructProcessTree(0, height, 1);
+	char fileName[100];
+	count = strArraySearch(argv, argc, "-d");
+	strcpy(fileName, argv[++count]);
 
+	// check number of records
+	fseek (dataFilePtr , 0 , SEEK_END);
+	lSize = ftell (dataFilePtr);
+	rewind (dataFilePtr);
+	int numOfrecords = (int) lSize/sizeof(rec);
+
+   	printf("Records found in file %d \n", numOfrecords);
+	fclose(dataFilePtr);
+
+	//Format arguments to pass in root Node executable
+	char **argumentArray = (char**)malloc(7*sizeof(char*));
+	for(int i = 0; i < 7; i++)
+		argumentArray[i] = (char*)malloc(100*sizeof(char));
+	
+	argumentArray[0] = "exe/rootNode";
+	sprintf(argumentArray[1], "%d", height);
+	sprintf(argumentArray[2], "%d", 0);
+	sprintf(argumentArray[3], "%d", numOfrecords);
+	argumentArray[4] = fileName;
+	argumentArray[5] = pattern;
+	argumentArray[6] = NULL;	
+
+	execvp("exe/rootNode",argumentArray);
+	
 }
