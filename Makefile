@@ -6,10 +6,13 @@ CC = gcc
 #  -Wall turns on most, but not all, compiler warnings
 CFLAGS  = -g
 
-all: myfind splitter-merger rootNode leafNode
+all: myfind splitter-merger rootNode leafNode sortNode
 
 myfind: myfind.o tests.o
 	$(CC) $(CFLAGS) tree.o tests.o -lm -o exe/myfind -lcunit
+
+sortNode: sortNode.o
+	$(CC) $(CFLAGS) sortNode.o -lm -o exe/sortNode -lcunit
 
 rootNode: rootNode.o
 	$(CC) $(CFLAGS) rootNode.o -lm -o exe/rootNode -lcunit
@@ -22,6 +25,9 @@ leafNode: leafNode.o
 
 myfind.o: src/tree.c
 	$(CC) $(CFLAGS) -c src/tree.c
+
+sortNode.o: src/sortNode.c
+	$(CC) $(CFLAGS) -c src/sortNode.c
 
 leafNode.o: src/leafNode.c
 	$(CC) $(CFLAGS) -c src/leafNode.c
@@ -38,6 +44,7 @@ rootNode.o: src/rootNode.c
 clean:
 	rm -fv *.o exe/*
 	rm -fv tree
+	rm -f tmp/*
 
 cunit:
 	sudo apt-get install libcunit1 libcunit1-doc libcunit1-dev

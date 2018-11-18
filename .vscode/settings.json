@@ -7,6 +7,7 @@
         "shared.h\u0000ared.h": "c",
         "shared.h": "c",
         "shared.h\u0000hared.h": "c",
-        "shared.h\u0000shared.h": "c"
+        "shared.h\u0000shared.h": "c",
+        "stdio.h": "c"
     }
 }

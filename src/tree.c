@@ -15,9 +15,6 @@
 
 #define CUNIT_TEST 0
 
-int fd;
-char *fifoPipe;
-
 void errCatch(char* errmsg){
 	printf("Error: %s\n", errmsg);
 }
@@ -69,6 +66,7 @@ int main(int argc, char const *argv[]){
 	FILE *dataFilePtr;
 	long lSize;
 	MyRecord rec;
+	int skew;
 
 	if(argc == 8){
 		count = strArraySearch(argv, argc, "-h");
@@ -79,12 +77,29 @@ int main(int argc, char const *argv[]){
 
 		count = strArraySearch(argv, argc, "-p");
 		strcpy( pattern, argv[++count] );
+
+		count = strArraySearch(argv, argc, "-s");
+		if(count != -1)
+			skew = 1;
+	}
+	else if(argc == 7){
+		count = strArraySearch(argv, argc, "-h");
+		height = atoi(argv[++count]);
+
+		count = strArraySearch(argv, argc, "-d");
+		dataFilePtr = fopen(argv[++count],"rb");
+
+		count = strArraySearch(argv, argc, "-p");
+		strcpy( pattern, argv[++count] );
+		
+		skew = 0;
 	}
 	else if(argc == 1){
 		height = 3;
 		dataFilePtr = stdin;
 		//CHANGE SUBSTR ACCORDING TO BINARY FILE
 		pattern = "test";
+		skew = 0;
 	}
 	else{
 		errCatch("Wrong number of arguments... Exiting\n");
@@ -100,7 +115,7 @@ int main(int argc, char const *argv[]){
 	rewind (dataFilePtr);
 	int numOfrecords = (int) lSize/sizeof(rec);
 
-   	printf("Records found in file %d \n", numOfrecords);
+   	//printf("Records found in file %d \n", numOfrecords);
 	fclose(dataFilePtr);
 
 	//Format arguments to pass in root Node executable
@@ -114,7 +129,8 @@ int main(int argc, char const *argv[]){
 	sprintf(argumentArray[3], "%d", numOfrecords);
 	argumentArray[4] = fileName;
 	argumentArray[5] = pattern;
-	argumentArray[6] = NULL;	
+	sprintf(argumentArray[6],"%d", skew);
+	argumentArray[7] = NULL;
 
 	execvp("exe/rootNode",argumentArray);
 	
