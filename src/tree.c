@@ -119,8 +119,8 @@ int main(int argc, char const *argv[]){
 	fclose(dataFilePtr);
 
 	//Format arguments to pass in root Node executable
-	char **argumentArray = (char**)malloc(7*sizeof(char*));
-	for(int i = 0; i < 7; i++)
+	char **argumentArray = (char**)malloc(10*sizeof(char*));
+	for(int i = 0; i < 10; i++)
 		argumentArray[i] = (char*)malloc(100*sizeof(char));
 	
 	argumentArray[0] = "exe/rootNode";
@@ -130,7 +130,8 @@ int main(int argc, char const *argv[]){
 	argumentArray[4] = fileName;
 	argumentArray[5] = pattern;
 	sprintf(argumentArray[6],"%d", skew);
-	argumentArray[7] = NULL;
+	sprintf(argumentArray[7], "%d", numOfrecords);
+	argumentArray[8] = NULL;
 
 	execvp("exe/rootNode",argumentArray);
 	

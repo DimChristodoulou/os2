@@ -24,13 +24,14 @@ int main(int argc, char *argv[])
     strcpy(fileName, argv[4]);
     strcpy(patternName, argv[5]);
     int skew = atoi(argv[6]);
+    int numOfRecords = atoi(argv[7]);
     printf("SKEW %d\n", skew);
 
     //printf("%d %d %d %s %s\n", height, startRead, endRead,fileName, patternName);
 
-	char **argumentArray = (char**)malloc(9*sizeof(char*));
+	char **argumentArray = (char**)malloc(15*sizeof(char*));
 	
-	for(int i = 0; i < 9; i++)
+	for(int i = 0; i < 15; i++)
 		argumentArray[i] = (char*)malloc(100*sizeof(char));
 	
     argumentArray[0] = "exe/splitter-merger";
@@ -39,9 +40,21 @@ int main(int argc, char *argv[])
 	sprintf(argumentArray[3], "%d", endRead);
 	argumentArray[4] = fileName;
 	argumentArray[5] = patternName;
-    argumentArray[6] = "";
     sprintf(argumentArray[7], "%d", skew);
-	argumentArray[8] = NULL;
+    sprintf(argumentArray[8], "%d", numOfRecords);
+    sprintf(argumentArray[9], "%d", height);
+
+    char *pidStr = (char*)malloc(20*sizeof(char));
+    int myPid = getpid();
+    sprintf(pidStr,"%d",myPid);
+
+    char *myRootFifo = (char*)malloc(50*sizeof(char));
+    strcat(myRootFifo, "tmp/fifo1");
+    strcat(myRootFifo, pidStr);
+
+    argumentArray[6] = myRootFifo;
+
+	argumentArray[11] = NULL;
 
     pid = fork();
     if (pid == 0){
