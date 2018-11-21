@@ -34,7 +34,10 @@ int main(int argc, char *argv[]){
     int numOfRecords = atoi(argv[8]);
     int rootPID = atoi(argv[10]);
     int fd;    
-    //printf("In leafNode with %d pid, %d height, %d startRead, %d endRead, %s fileName, %s patternName %s myfifo %d skew\n", getpid(), height, startRead, endRead, fileName, patternName, myfifo, skew);
+    
+    //If skew is selected, calculate two sums, the sum of all ids of the children (so for 4 children 1+2+3+4) and one from 0 to the 
+    //current child's id (so for 4 children, if current leafnode is child #3, this sum will be 1+2)
+    //Afterwards, calculate the new starting and ending point.
     if(skew == 1){        
         int sum = 0, sum2 = 0;          
         for(int i = 1; i < pow(2, maxHeight) + 1; i++){
@@ -49,7 +52,7 @@ int main(int argc, char *argv[]){
         endRead += startRead;
     }
 
-    printf("In leafNode with %d pid, %d height, %d startRead, %d endRead, %s fileName, %s patternName %s myfifo %d skew\n", getpid(), height, startRead, endRead, fileName, patternName, myfifo, skew);
+    printf("In\t leafNode\t with\t %d pid, %s myfifo\n", getpid(), myfifo);
 
     MyRecord searchRec;
 
@@ -66,8 +69,9 @@ int main(int argc, char *argv[]){
 
     for(int i = startRead; i < endRead; i++){
         fread(&searchRec, sizeof(MyRecord), 1, fptr);  
+        //Empty string every time we read a record
         searchStr[0] = '\0'; 
-        //printf("IN %ld %s %s  %s %d %s %s %-9.2f\n", searchRec.custid, searchRec.LastName, searchRec.FirstName, searchRec.Street, searchRec.HouseID, searchRec.City, searchRec.postcode, searchRec.amount);            
+        
         sprintf(custIdStr, "%ld", searchRec.custid);
         sprintf(houseIdStr, "%d", searchRec.HouseID);
         sprintf(amountStr, "%-9.2f", searchRec.amount);
@@ -77,6 +81,7 @@ int main(int argc, char *argv[]){
         strstr(houseIdStr, patternName)!=NULL || strstr(searchRec.City, patternName)!=NULL || strstr(searchRec.postcode, patternName)!=NULL || 
         strstr(amountStr, patternName)!=NULL){
 
+            //Build a string containing the whole record and write it to the parent
             searchStr = strcat(searchStr, custIdStr);
             searchStr = strcat(searchStr, DELIMITER);
             searchStr = strcat(searchStr, searchRec.LastName);
@@ -92,12 +97,12 @@ int main(int argc, char *argv[]){
             searchStr = strcat(searchStr, searchRec.postcode);
             searchStr = strcat(searchStr, DELIMITER);
             searchStr = strcat(searchStr, amountStr);
-            //printf("ABOUT TO WRITE %s\n",searchStr);
             write(fd, searchStr, (5*SIZEofBUFF + SizeofFLOAT + SizeofINT + SizeofLONG + 50));
 
         }
     }
     
+    //Stop counting time, process is finished, write time to parent process and send SIGUSR2 to root node
     clock_t end = clock();
     double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     char output[50];
@@ -105,4 +110,13 @@ int main(int argc, char *argv[]){
     write(fd, output, 50);
     close(fd);
     kill(rootPID, SIGUSR2);
+    //fclose(fptr);
+    //free(fileName);
+    //free(patternName);
+    free(myfifo);
+    free(ptr);
+    free(searchStr);
+    free(custIdStr);
+    free(houseIdStr);
+    free(amountStr);
 }

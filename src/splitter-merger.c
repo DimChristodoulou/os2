@@ -18,7 +18,8 @@ int skew;
 
 int main(int argc, char const *argv[])
 {    
-
+    clock_t begin = clock();
+    //Parse all arguments passed by the parent process
     int height = atoi(argv[1]);
     double startRead = atoi(argv[2]);
     double endRead = atoi(argv[3]);
@@ -37,22 +38,12 @@ int main(int argc, char const *argv[])
     int maxHeight = atoi(argv[9]);
     int rootPID = atoi(argv[10]);
 
+    //Calculate middle point (average of start and end records) to pass to children
     double midRead;
-    
-    printf("In splitter-merger with %d pid AND SKEW = %d\n", getpid(), skew);
-    
-    //TODO: Skew part
+
     midRead = (startRead + endRead)/2;
     int midReadFloor = floor(midRead);
     int midReadCeil = ceil(midRead);
-
-    // else if(skew == 1){
-    //     int sum = 0;        
-    //     for(int i = 0; i < pow(2,maxHeight); i++){
-    //         sum += i;
-    //     }
-    //     //int midRead = (numOfRecords * )/sum;
-    // }
 
     char *pidStr = (char*)malloc(20*sizeof(char));
     int pid = getpid();
@@ -60,7 +51,7 @@ int main(int argc, char const *argv[])
 
     //Make fifo for 1st child - either leafnode or other splitter-mergers
     char *myfifo1 = (char*)malloc(50*sizeof(char));
-    strcat(myfifo1, "tmp/fifo1");
+    strcat(myfifo1, "tmp/fifo1-");
     strcat(myfifo1, pidStr);
     if(mkfifo(myfifo1, 0666) < 0 ){
         perror("fifo failed!");
@@ -68,7 +59,7 @@ int main(int argc, char const *argv[])
 
     //Make fifo for 2nd child - either leafnode or other splitter-mergers
     char *myfifo2 = (char*)malloc(25*sizeof(char));
-    strcat(myfifo2, "tmp/fifo2");
+    strcat(myfifo2, "tmp/fifo2-");
     strcat(myfifo2, pidStr);
     if(mkfifo(myfifo2, 0666) < 0 ){
         perror("fifo failed!");
@@ -116,6 +107,14 @@ int main(int argc, char const *argv[])
     int childFd1,childFd2;
     int parentFd;
 
+    char *tempParent2 = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
+    int tmpParentRdFd2=-1;
+
+    char *tempParent1 = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
+    int tmpParentRdFd1=-1;
+
+    printf("In\t splitter-merger with\t %d pid, %s parent fifo, %s, %s children fifo\n", getpid(), parentFifo, myfifo1, myfifo2);
+
     //Height > 1 means that child processes are splitter - merger nodes.
     if(height > 1){
         pid_t pid1;
@@ -136,39 +135,30 @@ int main(int argc, char const *argv[])
             else{
                 //In parent
                 //Open child fifo to read from the child #2 splitter - merger
-                //printf("b4 mfifo2\n");
                 childFd2 = open(myfifo2, O_RDONLY);                
-                char *tempParent2 = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
-                int tmpParentRdFd2;
-                //printf("after parentfifo\n");
                 fd2 = open(parentFifo, O_WRONLY);
-                //printf("after mfifo2\n");
                 while(tmpParentRdFd2 != 0){
-                    //printf("in\n");
                     tmpParentRdFd2 = read(childFd2, tempParent2, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                     if( tmpParentRdFd2 < 0 ){
                         perror("Read Fail 2 Parent:");
                     }
-                    else{
-                        printf("PARENT %s DATA %s END DATA\n\n",parentFifo, tempParent2);
+                    else if(tempParent2 != ""){
                         write(fd2, tempParent2, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                     }
-                }                
+                }
                 close(fd2);
                 close(childFd2);
             }
             //Open child fifo to read from the child #1 splitter - merger  
             childFd1 = open(myfifo1, O_RDONLY);
-            char *tempParent1 = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
-            int tmpParentRdFd1;
+
             fd1 = open(parentFifo, O_WRONLY);
             while(tmpParentRdFd1 != 0){
                 tmpParentRdFd1 = read(childFd1, tempParent1, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                 if( tmpParentRdFd1 < 0 ){
                     perror("Read Fail 1 Parent:");
                 }
-                else{
-                    printf("PARENT %s DATA %s END DATA\n\n",parentFifo, tempParent1);
+                else if(tempParent1 != ""){
                     write(fd1, tempParent1, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                 }
             }
@@ -195,34 +185,29 @@ int main(int argc, char const *argv[])
             else{
                 double doubleTime2;
                 char *temp2 = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
-                int tmprdfd2;
+                int tmprdfd2=-1;
                 fd2 = open(myfifo2, O_RDONLY);
                 parentFd = open(parentFifo, O_WRONLY);
+                
                 while(tmprdfd2 != 0){
                     tmprdfd2 = read(fd2, temp2, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                     if( tmprdfd2 < 0 ){
                         perror("Read Fail 2:");
                     }
                     if(temp2[0]=='T'){
-                        printf("writing from child=2 to parent %s DATA %s END DATA\n\n",parentFifo, temp2);
-                        //write(parentFd, temp2, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
-                        //WRITE THIS PART TO ROOTNODE
-                        temp2++;
-                        sscanf(temp2, "%lf\n", &doubleTime2);
-                        //printf("%lf\n",doubleTime2);
-                    }
-                    else{
-                        printf("writing from child=2 to parent %s DATA %s END DATA\n\n",parentFifo, temp2);
                         write(parentFd, temp2, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
-                        //printf("Temp2 %s\n",temp2);
+                    }
+                    else if(temp2 != ""){
+                        write(parentFd, temp2, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                     }
                 }
                 close(fd2);
                 close(parentFd);
+                free(temp2);
             }
             double doubleTime1;
             char *temp1 = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
-            int tmprdfd1;
+            int tmprdfd1=-1;
             fd1 = open(myfifo1, O_RDONLY);
             parentFd = open(parentFifo, O_WRONLY);
             while(tmprdfd1 != 0){
@@ -231,22 +216,33 @@ int main(int argc, char const *argv[])
                     perror("Read Fail 1:");
                 }
                 if(temp1[0]=='T'){
-                    printf("writing from child=1 to parent %s DATA %s END DATA\n\n",parentFifo, temp1);
-                    //write(parentFd, temp1, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
-                    //WRITE THIS PART TO ROOTNODE
-                    temp1++;
-                    sscanf(temp1, "%lf\n", &doubleTime1);
-                    //printf("%lf\n",doubleTime1);
+                    write(parentFd, temp1, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                 }
-                else{   
-                    printf("writing from child=1 to parent %s DATA %s END DATA\n\n",parentFifo, temp1);
+                else if(temp1 != ""){
                     write(parentFd, temp1, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
                 }
             }
             close(fd1);
             close(parentFd);
+            free(temp1);
         }
     }
-
+    int finalParentFd = open(parentFifo, O_WRONLY);
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    char output[50];
+    snprintf(output, 50, "L%f", time_spent);
+    write(finalParentFd, output, 50);
+    close(finalParentFd);
+    free(pidStr);
+    free(myfifo1);
+    free(myfifo2); 
+    free(tempParent1);   
+    free(tempParent2);    
+    // for(int i = 0; i < 12; i++){
+    //    free(argumentArray1[i]);
+    //    free(argumentArray2[i]);
+    // }
+    
     return 0;
 }

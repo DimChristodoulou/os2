@@ -13,23 +13,52 @@
 #include <CUnit/Basic.h>
 
 #include "../inc/tree.h"
+#include "../inc/rootNode.h"
 #include "../inc/shared.h"
 
 int sigCount;
 
-void userSig_Handler(){
+void user2Sig_Handler(){
     sigCount++;
+}
+
+double getMinOfDoubleArray(double *doubleArray, int size){
+    double min = doubleArray[0];
+    for(int i = 1; i < size; i++){
+        if(doubleArray[i]<min){
+            min = doubleArray[i];
+        }
+    }
+    return min;
+}
+
+double getMaxOfDoubleArray(double *doubleArray, int size){
+    double max = doubleArray[0];
+    for(int i = 1; i < size; i++){
+        if(doubleArray[i]>max){
+            max = doubleArray[i];
+        }
+    }
+    return max;
+}
+
+double getAvgOfDoubleArray(double *doubleArray, int size){
+    double sum = 0;
+    for(int i = 0; i < size; i++){
+        sum += doubleArray[i];
+    }    
+    return sum/(double)size;
 }
 
 int main(int argc, char *argv[])
 {
     clock_t begin = clock();
-    signal(SIGUSR2, userSig_Handler);    
-    
+    //Assign signal SIGUSR2 to function user2Sig_Handler
+    signal(SIGUSR2, user2Sig_Handler);
+    sleep(0.5);
     pid_t pid;
-    printf("In rootNode with %d pid\n", getpid());
-	// fifoPipe = "/tmp/fifo";
-	// mkfifo(fifoPipe, 0666);
+    printf("In\t rootNode\t with\t %d pid\n", getpid());
+
     int height = atoi(argv[1]);
     int startRead = atoi(argv[2]);
     int endRead = atoi(argv[3]);
@@ -39,23 +68,18 @@ int main(int argc, char *argv[])
     strcpy(patternName, argv[5]);
     int skew = atoi(argv[6]);
     int numOfRecords = atoi(argv[7]);
-    printf("SKEW %d\n", skew);
 
     double **timeArray = (double**)malloc(2*sizeof(double*));
-    timeArray[0] = (double*)malloc(pow(2,height)*sizeof(double));
-    timeArray[1] = (double*)malloc(pow(2,height)*sizeof(double));    
+    timeArray[0] = (double*)malloc((pow(2,height)+1)*sizeof(double));
+    timeArray[1] = (double*)malloc((pow(2,height)+1)*sizeof(double));    
 
     if(skew == 1){
         startRead = 1;
         endRead = pow(2, height);
-    }
+    }    
 
-    FILE *fp = fopen("output","w");
-
-    //printf("%d %d %d %s %s\n", height, startRead, endRead,fileName, patternName);
-
+    //Build the array of arguments that gets passed over to the other executables
 	char **argumentArray = (char**)malloc(15*sizeof(char*));
-	
 	for(int i = 0; i < 15; i++)
 		argumentArray[i] = (char*)malloc(100*sizeof(char));
 	
@@ -85,7 +109,8 @@ int main(int argc, char *argv[])
 
 	argumentArray[11] = NULL;
 
-    int childRootFd;
+    int childRootFd;    
+    FILE *fp;
 
     pid = fork();
     if (pid == 0){
@@ -95,50 +120,59 @@ int main(int argc, char *argv[])
         perror("Error in forking");
     }
     else{        
+        fp = fopen("output","w");
         char *tempParent = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
         int retReadRoot = -1;
         int leafNodeCount = 0;
+        int parentNodeCount = 0;
         childRootFd = open(myRootFifo, O_RDONLY);
+        //While there is still data to read...
         while(retReadRoot != 0){
             retReadRoot = read(childRootFd, tempParent, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
-            printf("\n%s\n",tempParent);
+            //<0 is false read, return error
             if( retReadRoot < 0 ){
                 perror("Read Fail Root:");
             }
-            if(tempParent[0]=='0'){
-                printf("STAT: %s", tempParent);
-                sscanf(tempParent, "%lf\n", &timeArray[0][leafNodeCount++]);
+            //'T' is an identifier for metadata sent by the leaf Nodes, specifically time used by those nodes.
+            //Example: T0.00379 shows that a leaf node was being run for 3.79msec
+            if(tempParent[0]=='T'){
+                tempParent++;
+                sscanf(tempParent, "%lf\n", &timeArray[0][leafNodeCount++]);                
             }
-            // else if(tempParent[0]=='S'){
-            //     printf("STAT SPLITTER-MERGER: %s", tempParent);
-            // }
-            else{
-                fprintf(fp, "%s\n", tempParent);
+            //'T' is an identifier for metadata sent by the Splitter-Merger Nodes, specifically time used by those nodes.
+            //Example: L0.00379 shows that a splitter-merger node was being run for 3.79msec
+            else if(tempParent[0]=='L'){
+                tempParent++;
+                sscanf(tempParent, "%lf\n", &timeArray[1][parentNodeCount++]);                
+            }
+            else{                
+                if(tempParent[0]!='0')
+                    fprintf(fp, "%s\n", tempParent);
             }
         }
-    }
-    printf("ALL CHILDREN FINISHED\n");
+    }    
 
-    char **sortArgumentArray = (char**)malloc(15*sizeof(char*));
-	for(int i = 0; i < 15; i++)
-		sortArgumentArray[i] = (char*)malloc(100*sizeof(char));
-    
-    sortArgumentArray[0] = "exe/sortNode";
-    sortArgumentArray[1] = "output";
-    sortArgumentArray[2] = NULL;
+    printf("\n%d CHILDREN SENT SIGUSR2 SIGNAL\n",sigCount);
 
-    //execvp("exe/sortNode",sortArgumentArray);
-    printf("%d CHILDREN SENT SIGUSR2 SIGNAL\n",sigCount);
-
+    //Stop counting time, query is done
     clock_t end = clock();
     double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-    printf("TIME TO FINISH QUERY: %f\n", time_spent);
+    printf("\nTIME TO FINISH QUERY: %f\n", time_spent);
 
-    
-    for(int i = 0; i < pow(2,height); i++){
-        printf("%lf - ",timeArray[0][i]);
-    }
-    
+    printf("\nMINIMUM LEAF PROCESS TIME IS %f\n", getMinOfDoubleArray(timeArray[0],pow(2,height)));
+    printf("MAXIMUM LEAF PROCESS TIME IS %f\n", getMaxOfDoubleArray(timeArray[0],pow(2,height)));
+    printf("AVERAGE LEAF PROCESS TIME IS %f\n", getAvgOfDoubleArray(timeArray[0],pow(2,height)));
+
+    printf("\nMINIMUM SPLITTER-MERGER PROCESS TIME IS %f\n", getMinOfDoubleArray(timeArray[1],pow(2,height)));
+    printf("MAXIMUM SPLITTER-MERGER PROCESS TIME IS %f\n", getMaxOfDoubleArray(timeArray[1],pow(2,height)));
+    printf("AVERAGE SPLITTER-MERGER PROCESS TIME IS %f\n", getAvgOfDoubleArray(timeArray[1],pow(2,height)));       
+
+    // if(fclose(fp)!=0){
+    //     perror("FILE CLOSE ERROR");
+    // }
+
+	//execlp("exe/sortNode","exe/sortNode", "output",(char*)NULL);
+
     return 0;
 }
