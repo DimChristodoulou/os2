@@ -9,6 +9,7 @@
         "shared.h\u0000hared.h": "c",
         "shared.h\u0000shared.h": "c",
         "stdio.h": "c",
-        "cunit.h": "c"
+        "cunit.h": "c",
+        "stat.h": "c"
     }
 }

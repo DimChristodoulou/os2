@@ -4,7 +4,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include<sys/wait.h> 
+#include<sys/wait.h>
+#include <time.h>
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>

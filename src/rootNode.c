@@ -6,14 +6,26 @@
 #include <sys/stat.h>
 #include <sys/wait.h> 
 #include <math.h>
+#include <signal.h> 
+#include <time.h>
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
 
 #include "../inc/tree.h"
+#include "../inc/shared.h"
+
+int sigCount;
+
+void userSig_Handler(){
+    sigCount++;
+}
 
 int main(int argc, char *argv[])
 {
+    clock_t begin = clock();
+    signal(SIGUSR2, userSig_Handler);    
+    
     pid_t pid;
     printf("In rootNode with %d pid\n", getpid());
 	// fifoPipe = "/tmp/fifo";
@@ -28,6 +40,10 @@ int main(int argc, char *argv[])
     int skew = atoi(argv[6]);
     int numOfRecords = atoi(argv[7]);
     printf("SKEW %d\n", skew);
+
+    double **timeArray = (double**)malloc(2*sizeof(double*));
+    timeArray[0] = (double*)malloc(pow(2,height)*sizeof(double));
+    timeArray[1] = (double*)malloc(pow(2,height)*sizeof(double));    
 
     if(skew == 1){
         startRead = 1;
@@ -65,6 +81,7 @@ int main(int argc, char *argv[])
         perror("fifo failed!");
     } 
     argumentArray[6] = myRootFifo;
+    sprintf(argumentArray[10],"%d",getpid());
 
 	argumentArray[11] = NULL;
 
@@ -80,6 +97,7 @@ int main(int argc, char *argv[])
     else{        
         char *tempParent = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
         int retReadRoot = -1;
+        int leafNodeCount = 0;
         childRootFd = open(myRootFifo, O_RDONLY);
         while(retReadRoot != 0){
             retReadRoot = read(childRootFd, tempParent, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
@@ -89,6 +107,7 @@ int main(int argc, char *argv[])
             }
             if(tempParent[0]=='0'){
                 printf("STAT: %s", tempParent);
+                sscanf(tempParent, "%lf\n", &timeArray[0][leafNodeCount++]);
             }
             // else if(tempParent[0]=='S'){
             //     printf("STAT SPLITTER-MERGER: %s", tempParent);
@@ -109,5 +128,17 @@ int main(int argc, char *argv[])
     sortArgumentArray[2] = NULL;
 
     //execvp("exe/sortNode",sortArgumentArray);
+    printf("%d CHILDREN SENT SIGUSR2 SIGNAL\n",sigCount);
+
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+    printf("TIME TO FINISH QUERY: %f\n", time_spent);
+
+    
+    for(int i = 0; i < pow(2,height); i++){
+        printf("%lf - ",timeArray[0][i]);
+    }
+    
     return 0;
 }

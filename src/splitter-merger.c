@@ -20,8 +20,8 @@ int main(int argc, char const *argv[])
 {    
 
     int height = atoi(argv[1]);
-    int startRead = atoi(argv[2]);
-    int endRead = atoi(argv[3]);
+    double startRead = atoi(argv[2]);
+    double endRead = atoi(argv[3]);
 
     char* fileName = (char*)malloc(100*sizeof(char));
     char* patternName = (char*)malloc(100*sizeof(char));
@@ -33,14 +33,19 @@ int main(int argc, char const *argv[])
 
     int skew = atoi(argv[7]);
     int numOfRecords = atoi(argv[8]);
+    
     int maxHeight = atoi(argv[9]);
+    int rootPID = atoi(argv[10]);
 
-    int midRead;
+    double midRead;
     
     printf("In splitter-merger with %d pid AND SKEW = %d\n", getpid(), skew);
     
     //TODO: Skew part
     midRead = (startRead + endRead)/2;
+    int midReadFloor = floor(midRead);
+    int midReadCeil = ceil(midRead);
+
     // else if(skew == 1){
     //     int sum = 0;        
     //     for(int i = 0; i < pow(2,maxHeight); i++){
@@ -72,39 +77,41 @@ int main(int argc, char const *argv[])
     int fd1, fd2, parentFileDesc;
 
     //Create argument array for subsequent processes
-    char **argumentArray1 = (char**)malloc(11*sizeof(char*));
-	for(int i = 0; i < 11; i++)
+    char **argumentArray1 = (char**)malloc(12*sizeof(char*));
+	for(int i = 0; i < 12; i++)
 		argumentArray1[i] = (char*)malloc(100*sizeof(char));
 	
     //Argument array for process 1
     argumentArray1[0] = "exe/splitter-merger";
 	sprintf(argumentArray1[1], "%d", height-1);
-	sprintf(argumentArray1[2], "%d", startRead);
-	sprintf(argumentArray1[3], "%d", midRead);
+	sprintf(argumentArray1[2], "%f", startRead);
+	sprintf(argumentArray1[3], "%d", midReadFloor);
 	argumentArray1[4] = fileName;
 	argumentArray1[5] = patternName;
     argumentArray1[6] = myfifo1;
 	sprintf(argumentArray1[7], "%d", skew);
-    sprintf(argumentArray1[8], "%d", maxHeight);
-    sprintf(argumentArray1[9], "%d", numOfRecords);
-    argumentArray1[10] = NULL;
+    sprintf(argumentArray1[8], "%d", numOfRecords);
+    sprintf(argumentArray1[9], "%d", maxHeight);
+    sprintf(argumentArray1[10], "%d", rootPID);
+    argumentArray1[11] = NULL;
 
-    char **argumentArray2 = (char**)malloc(11*sizeof(char*));
-	for(int i = 0; i < 11; i++)
+    char **argumentArray2 = (char**)malloc(12*sizeof(char*));
+	for(int i = 0; i < 12; i++)
 		argumentArray2[i] = (char*)malloc(100*sizeof(char));
 	
     //Argument array for process 2
     argumentArray2[0] = "exe/splitter-merger";
 	sprintf(argumentArray2[1], "%d", height-1);
-	sprintf(argumentArray2[2], "%d", midRead);
-	sprintf(argumentArray2[3], "%d", endRead);
+	sprintf(argumentArray2[2], "%d", midReadCeil);
+	sprintf(argumentArray2[3], "%f", endRead);
 	argumentArray2[4] = fileName;
 	argumentArray2[5] = patternName;
     argumentArray2[6] = myfifo2;
 	sprintf(argumentArray2[7], "%d", skew);
-    sprintf(argumentArray2[8], "%d", maxHeight);
-    sprintf(argumentArray2[9], "%d", numOfRecords);
-    argumentArray2[10] = NULL;
+    sprintf(argumentArray2[8], "%d", numOfRecords);
+    sprintf(argumentArray2[9], "%d", maxHeight);
+    sprintf(argumentArray2[10], "%d", rootPID);
+    argumentArray2[11] = NULL;
     
     int childFd1,childFd2;
     int parentFd;

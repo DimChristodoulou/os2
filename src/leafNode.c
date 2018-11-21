@@ -7,6 +7,7 @@
 #include <sys/wait.h> 
 #include <time.h>
 #include <math.h>
+#include <signal.h>
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
@@ -29,17 +30,23 @@ int main(int argc, char *argv[]){
     strcpy(patternName, argv[5]);
     strcpy(myfifo, argv[6]);
     int skew = atoi(argv[7]);
-    int maxHeight = atoi(argv[8]);
-    int numOfRecords = atoi(argv[9]);
+    int maxHeight = atoi(argv[9]);
+    int numOfRecords = atoi(argv[8]);
+    int rootPID = atoi(argv[10]);
     int fd;    
-
+    //printf("In leafNode with %d pid, %d height, %d startRead, %d endRead, %s fileName, %s patternName %s myfifo %d skew\n", getpid(), height, startRead, endRead, fileName, patternName, myfifo, skew);
     if(skew == 1){        
-        int sum = 0;        
-        for(int i = 0; i < pow(2, maxHeight); i++){
+        int sum = 0, sum2 = 0;          
+        for(int i = 1; i < pow(2, maxHeight) + 1; i++){
             sum += i;
-        }
-        startRead = numOfRecords*(startRead-1)/sum;
-        endRead = numOfRecords*(startRead)/sum;
+        }        
+        for(int j = 0; j < startRead; j++)
+        {
+            sum2 += j;
+        }        
+        startRead = (numOfRecords*sum2)/sum;
+        endRead = (numOfRecords*endRead)/sum;
+        endRead += startRead;
     }
 
     printf("In leafNode with %d pid, %d height, %d startRead, %d endRead, %s fileName, %s patternName %s myfifo %d skew\n", getpid(), height, startRead, endRead, fileName, patternName, myfifo, skew);
@@ -97,4 +104,5 @@ int main(int argc, char *argv[]){
     snprintf(output, 50, "T%f", time_spent);
     write(fd, output, 50);
     close(fd);
+    kill(rootPID, SIGUSR2);
 }

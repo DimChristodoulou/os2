@@ -25,12 +25,8 @@ int main(int argc, char *argv[])
     FILE *fp;
     fp = fopen(argv[1],"r");
 
-    int fp2 = open("sorted.txt",O_WRONLY);
+    execlp("sort", "output", (char*)NULL);
     
-    dup2(fp2,1); //output redirection from stdout to results.txt
-    execlp("sort", "-n","-k", "1", "-u", "-o", "sorted.txt", "output", (char*)NULL);
-    
-    close(fp2);
     fclose(fp);
     //execvp("/usr/bin/sort", sortArgumentArray);
     return 0;
