@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h> 
 #include <time.h>
+#include <math.h>
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
@@ -27,8 +28,21 @@ int main(int argc, char *argv[]){
     strcpy(fileName, argv[4]);
     strcpy(patternName, argv[5]);
     strcpy(myfifo, argv[6]);
-    int fd;
-    printf("In leafNode with %d pid, %d height, %d startRead, %d endRead, %s fileName, %s patternName %s myfifo\n", getpid(), height, startRead, endRead, fileName, patternName, myfifo);
+    int skew = atoi(argv[7]);
+    int maxHeight = atoi(argv[8]);
+    int numOfRecords = atoi(argv[9]);
+    int fd;    
+
+    if(skew == 1){        
+        int sum = 0;        
+        for(int i = 0; i < pow(2, maxHeight); i++){
+            sum += i;
+        }
+        startRead = numOfRecords*(startRead-1)/sum;
+        endRead = numOfRecords*(startRead)/sum;
+    }
+
+    printf("In leafNode with %d pid, %d height, %d startRead, %d endRead, %s fileName, %s patternName %s myfifo %d skew\n", getpid(), height, startRead, endRead, fileName, patternName, myfifo, skew);
 
     MyRecord searchRec;
 

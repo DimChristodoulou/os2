@@ -4,11 +4,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include<sys/wait.h> 
+#include <sys/wait.h> 
+#include <math.h>
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
 
+#include "../inc/tree.h"
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +29,13 @@ int main(int argc, char *argv[])
     int numOfRecords = atoi(argv[7]);
     printf("SKEW %d\n", skew);
 
+    if(skew == 1){
+        startRead = 1;
+        endRead = pow(2, height);
+    }
+
+    FILE *fp = fopen("output","w");
+
     //printf("%d %d %d %s %s\n", height, startRead, endRead,fileName, patternName);
 
 	char **argumentArray = (char**)malloc(15*sizeof(char*));
@@ -36,6 +45,7 @@ int main(int argc, char *argv[])
 	
     argumentArray[0] = "exe/splitter-merger";
 	sprintf(argumentArray[1], "%d", height);
+    //If skew is 0, uniformly distribute ranges
 	sprintf(argumentArray[2], "%d", startRead);
 	sprintf(argumentArray[3], "%d", endRead);
 	argumentArray[4] = fileName;
@@ -49,12 +59,16 @@ int main(int argc, char *argv[])
     sprintf(pidStr,"%d",myPid);
 
     char *myRootFifo = (char*)malloc(50*sizeof(char));
-    strcat(myRootFifo, "tmp/fifo1");
+    strcat(myRootFifo, "tmp/masterFifo");
     strcat(myRootFifo, pidStr);
-
+    if(mkfifo(myRootFifo, 0666) < 0 ){
+        perror("fifo failed!");
+    } 
     argumentArray[6] = myRootFifo;
 
 	argumentArray[11] = NULL;
+
+    int childRootFd;
 
     pid = fork();
     if (pid == 0){
@@ -63,9 +77,37 @@ int main(int argc, char *argv[])
     else if(pid < 0){
         perror("Error in forking");
     }
-    else{
-        wait(NULL);
-        printf("ALL CHILDREN FINISHED\n");
+    else{        
+        char *tempParent = (char*)malloc((5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50)*sizeof(char));
+        int retReadRoot = -1;
+        childRootFd = open(myRootFifo, O_RDONLY);
+        while(retReadRoot != 0){
+            retReadRoot = read(childRootFd, tempParent, (5*SIZEofBUFF + SizeofINT + SizeofFLOAT + SizeofLONG + 50));
+            printf("\n%s\n",tempParent);
+            if( retReadRoot < 0 ){
+                perror("Read Fail Root:");
+            }
+            if(tempParent[0]=='0'){
+                printf("STAT: %s", tempParent);
+            }
+            // else if(tempParent[0]=='S'){
+            //     printf("STAT SPLITTER-MERGER: %s", tempParent);
+            // }
+            else{
+                fprintf(fp, "%s\n", tempParent);
+            }
+        }
     }
+    printf("ALL CHILDREN FINISHED\n");
+
+    char **sortArgumentArray = (char**)malloc(15*sizeof(char*));
+	for(int i = 0; i < 15; i++)
+		sortArgumentArray[i] = (char*)malloc(100*sizeof(char));
+    
+    sortArgumentArray[0] = "exe/sortNode";
+    sortArgumentArray[1] = "output";
+    sortArgumentArray[2] = NULL;
+
+    //execvp("exe/sortNode",sortArgumentArray);
     return 0;
 }
